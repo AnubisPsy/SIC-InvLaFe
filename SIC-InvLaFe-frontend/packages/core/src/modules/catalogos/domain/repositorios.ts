@@ -3,7 +3,7 @@ import type { Cliente, DatosContacto, DatosProducto, Producto, Proveedor } from 
 
 /**
  * Puertos del módulo de catálogos. El dominio depende de estas interfaces;
- * la implementación contra Supabase vive en `infrastructure/`.
+ * la implementación contra el backend vive en `infrastructure/`.
  */
 export interface RepositorioProveedores {
   listar(): Promise<Proveedor[]>;

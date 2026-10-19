@@ -6,7 +6,7 @@ import {
   aId,
   type FilaModulo,
   type FilaPermisoRol,
-} from "../../infraestructura/supabase/tablas.js";
+} from "../../infraestructura/db/filas.js";
 
 // --- Formas que devuelve la API (iguales a las entidades del frontend) -------
 

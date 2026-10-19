@@ -11,8 +11,8 @@ let contenedor: ContenedorCore | null = null;
  * Singleton perezoso del contenedor.
  *
  * Perezoso para que la validación del entorno falle durante el render y el
- * límite de error pueda explicarlo; singleton para no abrir un cliente de
- * Supabase por render, lo que duplicaría las suscripciones de sesión.
+ * límite de error pueda explicarlo; singleton para no crear un contenedor
+ * por render, lo que duplicaría las suscripciones de sesión.
  */
 function obtenerContenedor(): ContenedorCore {
   if (!contenedor) {

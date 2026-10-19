@@ -4,11 +4,8 @@ import { ErrorHttp } from "../compartido/errores.js";
 /**
  * Límite de intentos por IP para las rutas sin autenticar.
  *
- * Hace falta porque el login por nombre de usuario invierte quién habla con
- * Supabase: antes el navegador llamaba a GoTrue directamente y GoTrue veía —y
- * limitaba— la IP real de cada persona; ahora las llamadas salen todas desde la
- * IP de este servidor. Sin una barrera aquí, probar contraseñas contra la API
- * sería gratis, y encima el ruido lo pagarían todos los usuarios por igual.
+ * Sin una barrera aquí, probar contraseñas contra la API sería gratis: cada
+ * intento solo le cuesta al atacante una petición.
  *
  * Es un contador en memoria: se pierde al reiniciar y no se comparte entre
  * instancias. Suficiente para un sistema de este tamaño y sin dependencias

@@ -1,6 +1,6 @@
 import type { ClienteApi } from "../../../infrastructure/http/cliente";
 import type { AlmacenSesion, SesionGuardada } from "../../../infrastructure/http/sesion";
-import { ErrorAutenticacion, ErrorValidacion } from "../../../shared/errores";
+import { ErrorAutenticacion } from "../../../shared/errores";
 import type { Credenciales, SesionAuth } from "../domain/entidades";
 import type { ServicioAutenticacion } from "../domain/repositorios";
 
@@ -70,15 +70,6 @@ export function crearServicioAutenticacion(
 
     async cerrarSesion() {
       await sesion.borrar();
-    },
-
-    /** Ya no hay recuperación por correo: la contraseña la restablece un administrador. */
-    async enviarCorreoRecuperacion() {
-      throw new ErrorValidacion(
-        "La recuperación por correo no está disponible. Pide a un administrador " +
-          "que te asigne una contraseña nueva.",
-        {},
-      );
     },
 
     async actualizarContrasena(nueva: string) {

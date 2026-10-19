@@ -101,15 +101,6 @@ export function useCerrarSesion() {
   });
 }
 
-export function useEnviarCorreoRecuperacion() {
-  const core = useCore();
-
-  return useMutation({
-    mutationFn: ({ correo, urlRedireccion }: { correo: string; urlRedireccion: string }) =>
-      core.auth.enviarCorreoRecuperacion(correo, urlRedireccion),
-  });
-}
-
 export function useCambiarContrasena() {
   const core = useCore();
 

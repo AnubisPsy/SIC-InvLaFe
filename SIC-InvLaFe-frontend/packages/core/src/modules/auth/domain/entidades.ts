@@ -4,7 +4,7 @@ import type { UsuarioDetalle } from "../../acceso/domain/entidades";
 import type { ClaveModulo } from "../../acceso/domain/modulos";
 import type { MapaPermisos } from "../../acceso/domain/permisos";
 
-/** Identidad devuelta por Supabase Auth, antes de resolver el usuario de negocio. */
+/** Identidad de la sesión, antes de resolver el usuario de negocio. */
 export interface SesionAuth {
   authUserId: string;
   correo: string;
@@ -69,16 +69,6 @@ export function validarCredenciales(datos: Credenciales): Credenciales {
   }
 
   return { identificador, contrasena: datos.contrasena };
-}
-
-export function validarCorreoRecuperacion(correo: string): string {
-  const limpio = correo?.trim().toLowerCase() ?? "";
-  if (!limpio || !esCorreoValido(limpio)) {
-    throw new ErrorValidacion("Revisa el correo.", {
-      correo: "Escribe un correo válido para enviarte el enlace.",
-    });
-  }
-  return limpio;
 }
 
 export function validarNuevaContrasena(

@@ -7,8 +7,8 @@ const ContextoCore = createContext<ContenedorCore | null>(null);
  * Inyecta el contenedor de casos de uso en el árbol de React.
  *
  * Los hooks nunca construyen el contenedor: lo reciben. Así la app web y la de
- * React Native pueden configurar Supabase distinto (almacenamiento de sesión,
- * detección de URL) y compartir exactamente los mismos hooks.
+ * React Native pueden configurarlo distinto (por ejemplo, dónde guardar la
+ * sesión) y compartir exactamente los mismos hooks.
  */
 export function ProveedorCore({
   contenedor,

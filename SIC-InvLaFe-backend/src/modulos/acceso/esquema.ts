@@ -15,7 +15,7 @@ export interface Credenciales {
   contrasena: string;
 }
 
-/** Longitud mínima que exige Supabase Auth por defecto. */
+/** Longitud mínima de una contraseña. */
 export const LARGO_MINIMO_CONTRASENA = 8;
 
 export function validarNuevaContrasena(cuerpo: unknown): string {

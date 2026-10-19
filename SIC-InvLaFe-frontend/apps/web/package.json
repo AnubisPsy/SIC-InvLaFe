@@ -15,7 +15,6 @@
     "@invlafe/core": "*",
     "@invlafe/query": "*",
     "@mui/material": "^9.3.1",
-    "@supabase/supabase-js": "^2.58.0",
     "@tanstack/react-query": "^5.90.2",
     "exceljs": "^4.4.0",
     "jspdf": "^4.2.1",

@@ -6,7 +6,7 @@ import {
   type FilaModulo,
   type FilaPermisoRol,
   type FilaUsuario,
-} from "../../infraestructura/supabase/tablas.js";
+} from "../../infraestructura/db/filas.js";
 import {
   SIN_PERMISOS,
   claveDeModulo,
@@ -17,7 +17,7 @@ import {
 
 /** Identidad ya verificada de quien hace la petición. */
 export interface Solicitante {
-  /** Id del usuario. Se mantiene el nombre de la época de Supabase Auth. */
+  /** Id del usuario (`usuarios.id`). */
   authUserId: string;
   /** Correo del usuario, en minúsculas. */
   correo: string;
@@ -25,7 +25,13 @@ export interface Solicitante {
   usuario: UsuarioSistema;
 }
 
-/** Fila de `usuarios` en la forma que usa el resto del backend. */
+/**
+ * Fila de `usuarios` en la forma que usa el resto del backend.
+ *
+ * `id` coincide con el de la cuenta de Auth en las filas creadas por este
+ * backend (ver `FilaUsuario`), lo que permite localizar la cuenta sin recorrer
+ * el listado completo de Auth.
+ */
 export interface UsuarioSistema {
   id: string;
   nombre: string;
@@ -48,9 +54,12 @@ export function aUsuarioSistema(fila: FilaUsuario): UsuarioSistema {
     usuario: fila.usuario ?? null,
     telefono: fila.telefono,
     rolId: aIdOpcional(fila.rol_id),
-    // Sin valor explícito se asume activo. Igual que en el frontend.
+    // Sin valor explícito se asume activo: es como se comportan las filas
+    // creadas antes de que la columna existiera. Igual que en el frontend.
     activo: aBooleano(fila.activo, true),
-    // Sin valor explícito, nadie tiene un cambio de contraseña pendiente.
+    // Aquí el valor por defecto es el contrario y por el mismo motivo: sin
+    // columna, nadie tenía cambio pendiente, y asumir `true` dejaría a todo el
+    // mundo atrapado en la pantalla de cambio tras desplegar sin migrar.
     debeCambiarContrasena: aBooleano(fila.debe_cambiar_contrasena, false),
     creadoEn: fila.creado_en,
   };
@@ -118,8 +127,13 @@ export async function obtenerHashContrasena(id: string): Promise<string | null> 
 /**
  * Acciones que un rol puede ejecutar sobre un módulo.
  *
- * - Si un rol tiene varias filas para el mismo módulo, gana el permiso más amplio.
- * - Crear, editar y eliminar exigen además poder ver.
+ * Reproduce la semántica de `construirMapaPermisos` + `puede` del frontend:
+ *
+ * - Un rol puede tener varias filas para el mismo módulo (si la tabla `modulos`
+ *   tiene entradas con nombres distintos que casan con la misma clave); se
+ *   acumulan con OR para que gane el permiso más amplio.
+ * - Crear, editar y eliminar exigen además poder ver: conceder "eliminar" sobre
+ *   un módulo invisible no tiene sentido y en la interfaz nunca ocurre.
  * - Lo que no está concedido explícitamente, está denegado.
  */
 export async function accionesPermitidas(
@@ -138,7 +152,8 @@ export async function accionesPermitidas(
     .filter((fila) => claveDeModulo(fila.nombre) === modulo)
     .map((fila) => aId(fila.id));
 
-  // Sin fila en `modulos` no hay permiso que conceder.
+  // Sin fila en `modulos` no hay permiso que conceder. Es un fallo de
+  // configuración, no del usuario, y el frontend ya lo señala en pantalla.
   if (idsDelModulo.length === 0) return { ...SIN_PERMISOS };
 
   const permisos = await consultar<FilaPermisoRol>(

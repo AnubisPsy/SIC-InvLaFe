@@ -11,7 +11,6 @@ import {
 import { ErrorAutenticacion } from "../../../shared/errores";
 import type { Credenciales, Sesion, SesionAuth } from "../domain/entidades";
 import {
-  validarCorreoRecuperacion,
   validarCredenciales,
   validarNuevaContrasena,
 } from "../domain/entidades";
@@ -22,7 +21,6 @@ export interface CasosUsoAuth {
   cargarSesion(): Promise<Sesion | null>;
   iniciarSesion(credenciales: Credenciales): Promise<Sesion>;
   cerrarSesion(): Promise<void>;
-  enviarCorreoRecuperacion(correo: string, urlRedireccion: string): Promise<void>;
   cambiarContrasena(nueva: string, confirmacion: string): Promise<void>;
   /**
    * Cambia la contraseña y levanta el cambio obligatorio. Devuelve la sesión
@@ -85,13 +83,6 @@ export function crearCasosUsoAuth(deps: {
     },
 
     cerrarSesion: () => auth.cerrarSesion(),
-
-    enviarCorreoRecuperacion(correo, urlRedireccion) {
-      return auth.enviarCorreoRecuperacion(
-        validarCorreoRecuperacion(correo),
-        urlRedireccion,
-      );
-    },
 
     cambiarContrasena(nueva, confirmacion) {
       return auth.actualizarContrasena(validarNuevaContrasena(nueva, confirmacion));

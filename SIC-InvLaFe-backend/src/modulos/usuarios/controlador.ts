@@ -18,7 +18,7 @@ import {
  * Es exactamente la entidad `Usuario` del frontend
  * (`packages/core/src/modules/acceso/domain/entidades.ts`), en camelCase: así
  * el adaptador HTTP no necesita traducir nada y las respuestas encajan en la
- * caché de TanStack Query igual que las que vienen de Supabase.
+ * caché de TanStack Query igual que el resto de filas.
  *
  * `auth_user_id` no se expone: es un detalle interno del enlace con Auth.
  */

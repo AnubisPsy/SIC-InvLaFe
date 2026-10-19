@@ -29,6 +29,7 @@ export function leerEntorno(): Entorno {
 
   memoizado = {
     // Sin barra final: el cliente compone las rutas como `${apiUrl}/api/...`.
+    // "/" queda vacío, y las rutas quedan relativas al mismo servidor (Docker).
     apiUrl: leer("VITE_API_URL", import.meta.env.VITE_API_URL).replace(/\/+$/, ""),
   };
 

@@ -15,8 +15,8 @@ export const CONFIG_REGIONAL = {
 /**
  * Caducidad de la sesión por inactividad.
  *
- * Supabase refresca el token indefinidamente mientras la pestaña siga abierta,
- * así que el corte lo pone la aplicación: pasado `minutosLimite` sin que el
+ * El token del backend dura varias horas, así que el corte por inactividad lo
+ * pone la aplicación: pasado `minutosLimite` sin que el
  * usuario toque nada, se cierra la sesión. Vive aquí, y no en la app web,
  * porque la política es del negocio y una app móvil tendría que respetarla.
  */

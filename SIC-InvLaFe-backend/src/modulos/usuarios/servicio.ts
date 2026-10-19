@@ -4,7 +4,7 @@ import {
   ErrorValidacion,
 } from "../../compartido/errores.js";
 import { consultar, consultarUno } from "../../infraestructura/db/pool.js";
-import type { FilaUsuario } from "../../infraestructura/supabase/tablas.js";
+import type { FilaUsuario } from "../../infraestructura/db/filas.js";
 import { cifrarContrasena } from "../acceso/autenticacion.js";
 import {
   COLUMNAS_USUARIO,

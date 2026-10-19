@@ -78,7 +78,7 @@ export class ErrorConflicto extends ErrorHttp {
   }
 }
 
-/** 502 — Supabase falló o no respondió. No es culpa de quien llama. */
+/** 502 — La base de datos falló o no respondió. No es culpa de quien llama. */
 export class ErrorInfraestructura extends ErrorHttp {
   constructor(
     mensaje = "No se pudo completar la operación. Intenta de nuevo.",

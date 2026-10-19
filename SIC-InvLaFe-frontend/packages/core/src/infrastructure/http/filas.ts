@@ -1,9 +1,10 @@
 /**
- * Nombres de tabla y forma cruda de las filas tal como las devuelve PostgREST.
+ * Forma cruda de las filas tal como las devuelve el backend (snake_case, igual
+ * que las columnas de la base).
  *
- * Estos tipos son el contrato con la base y viven solo en infraestructura: el
- * dominio nunca los ve. Los ids se declaran `string | number` porque PostgREST
- * serializa `bigint` como número y `uuid` como texto; los mappers normalizan.
+ * Estos tipos son el contrato con la API y viven solo en infraestructura: el
+ * dominio nunca los ve. Los ids se declaran `string | number` porque los uuid
+ * llegan como texto y los bigint como número; los mappers normalizan.
  */
 export const TABLAS = {
   PROVEEDORES: "proveedores",

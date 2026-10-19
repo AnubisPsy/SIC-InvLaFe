@@ -28,29 +28,35 @@ export function crearApp(): Express {
   /**
    * CORS restringido a los orígenes declarados en `CORS_ORIGENES`.
    *
-   * Las peticiones sin `Origin` (curl, health checks, otro servidor) se dejan
-   * pasar: CORS es una protección del navegador contra sitios de terceros, no
-   * un control de acceso. Quien protege la API es el token, que sí se exige en
-   * todas las rutas de administración.
+   * Siempre se aceptan:
+   * - Las peticiones sin `Origin` (curl, health checks, otro servidor): CORS es
+   *   una protección del navegador contra sitios de terceros, no un control de
+   *   acceso. Quien protege la API es el token.
+   * - Las del mismo origen: en Docker, nginx sirve la app y reenvía `/api` a
+   *   este backend, así que la página y la API comparten dirección. Sin esta
+   *   regla habría que listar cada forma de abrir la app (IP, nombre, puerto).
    */
   app.use(
-    cors({
-      origin(origen, callback) {
-        if (!origen || entorno.origenesPermitidos.includes(origen)) {
-          callback(null, true);
-          return;
-        }
-        // Un `ErrorHttp` en vez de un `Error` pelado: así el rechazo sale como
-        // 403 con cuerpo JSON y no como un 500 que parecería un fallo nuestro.
-        callback(
-          new ErrorPermisoDenegado(
-            `El origen ${origen} no está autorizado. Añádelo a CORS_ORIGENES.`,
-          ),
-        );
-      },
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
-      maxAge: 86400,
+    cors((req, callback) => {
+      const origen = req.headers.origin;
+      const mismoOrigen = origen === `${req.protocol}://${req.get("host")}`;
+
+      if (!origen || mismoOrigen || entorno.origenesPermitidos.includes(origen)) {
+        callback(null, {
+          origin: true,
+          methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+          allowedHeaders: ["Content-Type", "Authorization"],
+          maxAge: 86400,
+        });
+        return;
+      }
+      // Un `ErrorHttp` en vez de un `Error` pelado: así el rechazo sale como
+      // 403 con cuerpo JSON y no como un 500 que parecería un fallo nuestro.
+      callback(
+        new ErrorPermisoDenegado(
+          `El origen ${origen} no está autorizado. Añádelo a CORS_ORIGENES.`,
+        ),
+      );
     }),
   );
 

@@ -101,8 +101,8 @@ export function crearCasosUsoVentas(deps: {
      * abortamos sin haber escrito nada), y solo entonces se inserta la venta.
      * Si el INSERT falla, se devuelve lo reservado.
      *
-     * La versión verdaderamente atómica es una función RPC en Postgres; el SQL
-     * está en `docs/supabase.md`. Mientras no exista, esta secuencia deja el
+     * La versión verdaderamente atómica sería una sola transacción en el
+     * backend. Mientras no exista, esta secuencia deja el
      * inventario consistente en todos los fallos salvo una caída del cliente
      * justo entre ambas escrituras.
      */

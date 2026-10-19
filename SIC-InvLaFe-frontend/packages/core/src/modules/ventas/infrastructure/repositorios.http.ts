@@ -7,7 +7,7 @@ import {
   type FilaCliente,
   type FilaPagoCliente,
   type FilaVenta,
-} from "../../../infrastructure/supabase/tablas";
+} from "../../../infrastructure/http/filas";
 import type { ID } from "../../../shared/tipos";
 import {
   aLoteDetalleDesdeLinea,
@@ -33,7 +33,7 @@ import type {
 
 /**
  * Ventas y cobros a clientes a través del backend. Igual que en compras, las
- * filas llegan con la forma de Supabase y se convierten con las mismas
+ * filas llegan en snake_case, con relaciones anidadas, y se convierten con las mismas
  * funciones de antes.
  */
 

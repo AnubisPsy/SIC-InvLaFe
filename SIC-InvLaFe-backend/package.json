@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "API administrativa de SIC-InvLaFe. Solo cubre lo que exige la service_role key de Supabase (altas y bajas de cuentas de acceso); el resto del CRUD lo hace el frontend directo contra Supabase con RLS.",
+  "description": "API de SIC-InvLaFe: autenticación con JWT y todo el acceso a la base PostgreSQL.",
   "engines": {
     "node": ">=20.6"
   },
@@ -14,7 +14,6 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.58.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

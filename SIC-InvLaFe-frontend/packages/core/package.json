@@ -11,8 +11,5 @@
   },
   "scripts": {
     "typecheck": "tsc -b"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.58.0"
   }
 }

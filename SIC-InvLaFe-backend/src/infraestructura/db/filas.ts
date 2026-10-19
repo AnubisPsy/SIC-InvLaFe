@@ -1,28 +1,12 @@
 /**
- * Nombres de tabla y forma cruda de las filas, tal como las devuelve PostgREST.
+ * Forma cruda de las filas de acceso (usuarios, módulos y permisos), tal como
+ * salen de PostgreSQL, y funciones para convertirlas.
  *
- * Espejo reducido de `packages/core/src/infrastructure/supabase/tablas.ts` del
- * frontend: aquí solo aparecen las tablas que el backend necesita tocar.
- *
- * Los ids se declaran `string | number` porque PostgREST serializa `bigint`
- * como número y `uuid` como texto, y el esquema de este proyecto no está fijado
- * a uno de los dos.
+ * Los ids se declaran `string | number` para no atar el código a un tipo de
+ * columna: los uuid llegan como texto y los bigint como número.
  */
-export const TABLAS = {
-  USUARIOS: "usuarios",
-  ROLES: "roles",
-  MODULOS: "modulos",
-  PERMISOS_ROL: "permisos_rol",
-} as const;
-
 export type IdCrudo = string | number;
 
-/**
- * `id` es, por convención de este proyecto, el mismo UUID que
- * `auth.users.id` de la cuenta de acceso. No hay clave foránea que lo imponga,
- * y el frontend sigue resolviendo la sesión por correo, pero el backend
- * mantiene la convención al dar de alta para que el enlace por id exista.
- */
 export interface FilaUsuario {
   id: IdCrudo;
   nombre: string;

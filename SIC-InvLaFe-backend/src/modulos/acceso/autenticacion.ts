@@ -26,7 +26,7 @@ export interface SesionEmitida extends TokenEmitido {
  */
 const CREDENCIALES_INVALIDAS = "El usuario o la contraseña no son correctos.";
 
-/** Rondas de cifrado de bcrypt. 10 es el estándar y el que usaba Supabase. */
+/** Rondas de cifrado de bcrypt. 10 es el estándar. */
 const RONDAS_BCRYPT = 10;
 
 /**

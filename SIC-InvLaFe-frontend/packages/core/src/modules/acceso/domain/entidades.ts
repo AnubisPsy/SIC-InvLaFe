@@ -13,8 +13,8 @@ export interface Rol {
 }
 
 /**
- * Usuario del sistema. `correo` es la llave que enlaza esta fila con la cuenta
- * de Supabase Auth: la sesión trae el email y con él se resuelve el rol.
+ * Usuario del sistema. Puede iniciar sesión con su correo o con su nombre de
+ * usuario; la contraseña la guarda el backend, cifrada, en la misma fila.
  */
 export interface Usuario {
   id: ID;
@@ -63,8 +63,8 @@ export interface DatosUsuario {
    * Contraseña de la cuenta de acceso.
    *
    * Obligatoria al crear, opcional al editar: en blanco significa "deja la que
-   * tiene". No se guarda en la tabla `usuarios`, solo viaja al backend, que es
-   * quien puede administrar Supabase Auth.
+   * tiene". No se guarda en la tabla `usuarios`, solo viaja al backend, que la
+   * guarda cifrada.
    */
   contrasena?: string;
 }
@@ -75,7 +75,7 @@ export interface DatosRol {
 
 // --- Reglas ------------------------------------------------------------------
 
-/** Mínimo que exige Supabase Auth; el backend valida lo mismo. */
+/** Largo mínimo de una contraseña; el backend valida lo mismo. */
 export const LARGO_MINIMO_CONTRASENA = 8;
 
 /** Texto de ayuda del campo, y también su mensaje de error. */

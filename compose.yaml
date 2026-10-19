@@ -1,0 +1,36 @@
+# SIC-InvLaFe en el servidor: backend + frontend.
+#
+# La base de datos NO está aquí: vive en su propio compose (~/postgres) para
+# que reconstruir o apagar la app nunca toque los datos. El backend llega a
+# ella por el puerto 5432 del propio servidor (host.docker.internal).
+#
+#   docker compose up -d --build     # construir y levantar
+#   docker compose logs -f backend   # ver lo que pasa
+#   docker compose down              # apagar (los datos siguen en PostgreSQL)
+
+name: sic-invlafe
+
+services:
+  backend:
+    build: ./SIC-InvLaFe-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:?Falta DATABASE_URL en .env}
+      JWT_SECRETO: ${JWT_SECRETO:?Falta JWT_SECRETO en .env}
+      JWT_DURACION: ${JWT_DURACION:-8h}
+      CORS_ORIGENES: ${CORS_ORIGENES:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Sin puertos publicados: solo nginx habla con el backend.
+    mem_limit: 256m
+
+  web:
+    build: ./SIC-InvLaFe-frontend
+    restart: unless-stopped
+    ports:
+      - "${PUERTO_WEB:-8081}:80"
+    depends_on:
+      - backend
+    mem_limit: 64m

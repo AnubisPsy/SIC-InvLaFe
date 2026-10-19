@@ -1,16 +1,20 @@
 # SIC-InvLaFe · Backend
 
-API administrativa de Inversiones La Fe. Cubre **solo** las operaciones que
-exigen la `service_role` key de Supabase, que nunca puede vivir en el navegador:
-crear, editar y eliminar usuarios junto con su cuenta de acceso.
+API de Inversiones La Fe. Es la única pieza que habla con la base de datos
+PostgreSQL: el frontend le pide todo a ella.
 
-Todo lo demás —proveedores, lotes, ventas, cobros, cotizaciones, y también
-*leer* usuarios, roles y permisos— lo hace el frontend directamente contra
-Supabase, protegido por RLS. Este backend no lo duplica.
+- **Inicio de sesión propio.** Correo o nombre de usuario, contraseña cifrada con
+  bcrypt en `usuarios.contrasena_hash` y un token JWT firmado por el backend.
+- **Todas las rutas exigen sesión**, salvo `/api/salud` y el propio inicio de
+  sesión. Administrar usuarios, roles y permisos exige además el permiso de
+  «Usuarios y roles».
+- **Operaciones de varias filas en transacción** (una compra con sus líneas, una
+  cotización con sus productos). Los descuentos de existencia y de saldo usan
+  bloqueo optimista: solo se aplican si el valor sigue siendo el que se leyó.
 
 ---
 
-## Puesta en marcha
+## Desarrollo
 
 ```bash
 npm install
@@ -18,18 +22,18 @@ cp .env.example .env      # y rellena los valores
 npm run dev               # http://localhost:3000
 ```
 
-Comprueba que responde:
+Comprueba que responde y que llega a la base:
 
 ```bash
 curl http://localhost:3000/api/salud
-# {"estado":"ok","servicio":"sic-invlafe-backend"}
+# {"estado":"ok","servicio":"sic-invlafe-backend","baseDatos":"ok"}
 ```
 
 | Comando | Qué hace |
 |---|---|
-| `npm run dev` | Servidor con recarga automática (tsx watch) |
+| `npm run dev` | Servidor con recarga automática (tsx watch). No recarga el `.env`: si lo cambias, reinicia |
 | `npm run build` | Compila TypeScript a `dist/` |
-| `npm start` | Ejecuta lo compilado (producción) |
+| `npm start` | Ejecuta lo compilado |
 | `npm run typecheck` | Solo comprueba tipos |
 
 Requiere Node 20.6 o superior.
@@ -38,319 +42,160 @@ Requiere Node 20.6 o superior.
 
 ## Variables de entorno
 
-Van en `.env`, que está en `.gitignore`. `.env.example` lista los nombres sin
-valores; cópialo y rellénalo.
-
 | Variable | Obligatoria | Descripción |
 |---|---|---|
-| `SUPABASE_URL` | sí | Project Settings → Data API → Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | sí | Project Settings → API Keys → **Secret key** (`sb_secret_…`) |
-| `SUPABASE_PUBLISHABLE_KEY` | sí | Project Settings → API Keys → **Publishable key** (`sb_publishable_…`). La misma del frontend; la usa el login por nombre de usuario |
-| `CORS_ORIGENES` | sí | Orígenes del frontend separados por comas, p. ej. `http://localhost:5173` |
-| `PORT` | no | Puerto de escucha (3000 por defecto) |
-| `NODE_ENV` | no | `production` en el servidor; cualquier otra cosa se trata como desarrollo |
+| `DATABASE_URL` | sí | `postgres://usuario:contraseña@servidor:5432/base`. Los símbolos de la contraseña van codificados (`@` es `%40`) |
+| `JWT_SECRETO` | sí | Al menos 32 caracteres aleatorios. Cambiarla cierra todas las sesiones |
+| `JWT_DURACION` | no | Duración del token, `8h` por defecto |
+| `CORS_ORIGENES` | no | Orígenes extra separados por comas. En desarrollo, el de Vite: `http://localhost:5173`. Las peticiones del mismo origen se aceptan siempre |
+| `PORT` | no | Puerto de escucha, 3000 por defecto |
+| `NODE_ENV` | no | `production` en el servidor |
 
-> **La secret key ignora RLS por completo.** Con ella se puede leer y escribir
-> cualquier fila y administrar las cuentas de Auth. Solo vive en el `.env` de
-> este backend. Si se filtra, revócala en el panel de Supabase.
+El servidor valida la configuración al arrancar y no levanta si falta algo.
 
-El servidor valida la configuración al arrancar y se niega a levantar si falta
-algo o si detecta que las dos claves están intercambiadas, en cualquiera de los
-dos sentidos.
+---
+
+## Base de datos
+
+La carpeta `db/` tiene lo necesario para crear una base nueva:
+
+| Archivo | Qué contiene |
+|---|---|
+| `db/esquema.sql` | Las 14 tablas, sin datos |
+| `db/datos-iniciales.sql` | Los 10 módulos y el rol Administrador con todos los permisos. Se puede repetir sin duplicar nada |
+
+Con PostgreSQL en Docker (`~/postgres` en el servidor), desde esta carpeta:
+
+```bash
+docker exec -i postgres-db-1 psql -U sic -d sic_invlafe < db/esquema.sql
+docker exec -i postgres-db-1 psql -U sic -d sic_invlafe < db/datos-iniciales.sql
+```
+
+(`docker ps` muestra el nombre real del contenedor de PostgreSQL.)
+
+### El primer administrador, o recuperar su acceso
+
+No hay recuperación por correo. Para crear el primer usuario, o para darle una
+contraseña nueva al administrador si la olvida:
+
+```bash
+# Con Docker, desde la raíz del repositorio:
+docker compose exec backend node dist/herramientas/crear-admin.js \
+  --correo admin@ejemplo.com --nombre "Nombre Apellido" --usuario admin
+
+# En desarrollo:
+npx tsx src/herramientas/crear-admin.ts --correo admin@ejemplo.com
+```
+
+Imprime una contraseña temporal y marca la cuenta para que pida cambiarla en el
+primer acceso. Si el correo ya existe, solo restablece la contraseña y le
+devuelve el rol Administrador.
+
+Los demás usuarios se crean y se restablecen desde la pantalla «Usuarios y
+roles».
 
 ---
 
 ## Endpoints
 
-Todos bajo `/api`. Las tres rutas de usuarios exigen cabecera
-`Authorization: Bearer <access_token>` con el token de sesión de Supabase Auth.
+Todos bajo `/api`. Salvo los dos primeros, exigen la cabecera
+`Authorization: Bearer <token>`.
 
-| Método | Ruta | Permiso requerido |
+### Acceso
+
+| Método | Ruta | Notas |
 |---|---|---|
-| `GET` | `/api/salud` | ninguno |
-| `POST` | `/api/acceso/iniciar-sesion` | ninguno (es donde se obtiene la sesión) |
-| `POST` | `/api/acceso/cambiar-contrasena` | ninguno, pero exige sesión (acción sobre uno mismo) |
-| `POST` | `/api/usuarios` | `crear` sobre «Usuarios y roles» |
-| `PATCH` | `/api/usuarios/:id` | `editar` sobre «Usuarios y roles» |
-| `DELETE` | `/api/usuarios/:id` | `eliminar` sobre «Usuarios y roles» |
+| `GET` | `/salud` | Sin sesión. Comprueba también la base |
+| `POST` | `/acceso/iniciar-sesion` | Sin sesión. `{ identificador, contrasena }` → `{ sesion: { token, expiraEn, usuarioId, correo } }` |
+| `GET` | `/acceso/sesion` | El usuario de la sesión actual |
+| `POST` | `/acceso/cambiar-contrasena` | `{ contrasena }`. Cambia la propia y levanta el cambio obligatorio |
 
-### `POST /api/acceso/iniciar-sesion`
+El inicio de sesión responde el mismo `401` si el usuario no existe o si la
+contraseña es incorrecta, y está limitado a 10 intentos cada 5 minutos por IP.
 
-Inicia sesión aceptando **correo o nombre de usuario**.
+### Usuarios, roles y módulos
 
-```json
-{ "identificador": "mperez", "contrasena": "unaClaveSegura" }
-```
+Exigen el permiso correspondiente sobre «Usuarios y roles».
 
-Responde `200` con `{ "sesion": { accessToken, refreshToken } }`, que el
-navegador instala con `supabase.auth.setSession`.
+| Método | Ruta |
+|---|---|
+| `GET` `POST` | `/usuarios` |
+| `GET` `PATCH` `DELETE` | `/usuarios/:id` |
+| `GET` `POST` | `/roles` |
+| `GET` `PATCH` `DELETE` | `/roles/:id` |
+| `GET` | `/roles/:id/usuarios/cantidad` |
+| `PUT` | `/roles/:id/permisos` |
+| `GET` | `/modulos` (solo sesión) |
 
-Existe porque Supabase Auth solo admite correo o teléfono como identificador: el
-nombre de usuario hay que traducirlo a correo antes de autenticar, y esa
-consulta a `usuarios` se hace sin sesión, algo que RLS impide desde el
-navegador. La traducción usa la secret key; la autenticación, la publishable,
-de modo que la sesión emitida no tiene ningún privilegio extra.
+### Catálogos
 
-El frontend **solo llama aquí cuando el identificador no lleva arroba**: entrar
-con el correo sigue siendo una llamada directa del navegador a Supabase, y por
-eso funciona aunque este backend esté caído.
+`/clientes`, `/proveedores` y `/productos`, cada uno con `GET` y `POST` en la
+raíz y `GET`, `PATCH` y `DELETE` en `/:id`.
 
-Dos decisiones a tener presentes:
+### Compras
 
-- Un identificador inexistente y una contraseña equivocada devuelven el **mismo**
-  `401`, para que el endpoint no sirva como forma de averiguar qué nombres de
-  usuario existen.
-- Está limitado a **10 intentos cada 5 minutos por IP**. Hace falta porque las
-  llamadas a Supabase ahora salen desde la IP de este servidor y no desde la de
-  cada persona, así que el límite propio de GoTrue ya no distingue entre unos y
-  otros. El contador vive en memoria: si algún día hay varias réplicas, hay que
-  moverlo al proxy de entrada o a Redis.
+| Método | Ruta |
+|---|---|
+| `GET` `POST` | `/compras` (filtros: `desde`, `hasta`, `proveedorId`, `limite`) |
+| `GET` `DELETE` | `/compras/:id` |
+| `GET` | `/compras/:id/pagos` |
+| `GET` | `/lotes` (filtros: `desde`, `hasta`, `proveedorId`, `productoId`, `productoIds`, `soloDisponibles`, `limite`) |
+| `GET` | `/lotes/:id` |
+| `POST` | `/lotes/:id/descontar` · `/lotes/:id/devolver` |
+| `POST` | `/pagos-proveedor` · `/pagos-proveedor/consulta-rango` |
+| `DELETE` | `/pagos-proveedor/:id` |
 
-### `POST /api/acceso/cambiar-contrasena`
+### Ventas
 
-Cambia la contraseña de quien llama y, si tenía un cambio obligatorio pendiente,
-lo da por cumplido. Responde `204` sin cuerpo.
+| Método | Ruta |
+|---|---|
+| `GET` `POST` | `/ventas` (filtros: `desde`, `hasta`, `clienteId`, `loteCompraId`, `soloConSaldo`, `limite`) |
+| `POST` | `/ventas/por-lotes` |
+| `GET` `DELETE` | `/ventas/:id` |
+| `POST` | `/ventas/:id/descontar-saldo` · `/ventas/:id/restituir-saldo` |
+| `GET` | `/ventas/:id/pagos` |
+| `POST` | `/pagos-cliente` · `/pagos-cliente/consulta-rango` |
+| `DELETE` | `/pagos-cliente/:id` |
 
-```json
-{ "contrasena": "laNuevaClave" }
-```
+### Cotizaciones
 
-Exige sesión pero **ningún permiso de módulo**: es una acción sobre uno mismo, y
-precisamente quien la necesita es quien todavía no puede usar el sistema.
+| Método | Ruta |
+|---|---|
+| `GET` `POST` | `/cotizaciones` (filtros: `desde`, `hasta`, `clienteId`) |
+| `GET` `PUT` `DELETE` | `/cotizaciones/:id` |
+| `PATCH` | `/cotizaciones/:id/estado` · `/cotizaciones/:id/venta` |
+| `PATCH` | `/cotizaciones/lineas/:lineaId/venta` |
 
-Son dos escrituras —la contraseña vive en Auth y la marca en `usuarios`— y por
-eso están aquí y no en el navegador: limpiar la marca desde el cliente exigiría
-una política de RLS que dejara a cada persona modificar su propia fila, donde
-también viven el rol y el estado activo.
-
-El orden es contraseña primero, marca después. Si falla lo segundo, la
-contraseña ya cambió y el sistema volverá a pedir el cambio en el siguiente
-acceso: molesta, pero nunca deja a nadie con la contraseña del administrador y
-la marca limpia.
-
-### `POST /api/usuarios`
-
-Crea la cuenta de acceso en Supabase Auth **y** la fila en `usuarios`.
-
-```json
-{
-  "nombre": "María Pérez",
-  "correo": "maria@ejemplo.com",
-  "usuario": "mperez",
-  "telefono": "809 555 1234",
-  "rolId": "b2c4f333-629a-4eda-a493-c0928499e04a",
-  "activo": true,
-  "contrasena": "unaClaveSegura",
-  "debeCambiarContrasena": true
-}
-```
-
-Responde `201` con el usuario creado, incluidos `usuario` y
-`debeCambiarContrasena`.
-
-`usuario` es opcional y se guarda en minúsculas: es el nombre con el que podrá
-iniciar sesión sin escribir el correo. Vive en `usuarios.usuario`, con índice
-único sobre `lower(usuario)`. Quien no lo tenga entra con su correo igual que
-siempre.
-
-`debeCambiarContrasena` **vale `true` si no se envía**. Es el comportamiento
-seguro: la contraseña del alta la elige el administrador, así que hasta que el
-usuario la sustituya hay dos personas que la conocen. Se guarda en
-`usuarios.debe_cambiar_contrasena`.
-
-La cuenta queda con el correo confirmado: el usuario puede entrar de inmediato
-con la contraseña que fijó el administrador, y cambiarla luego desde
-«Recuperar contraseña».
-
-### `PATCH /api/usuarios/:id`
-
-Todos los campos son opcionales; se aplica solo lo que se envíe.
-
-```json
-{ "nombre": "María Pérez Gómez", "activo": false }
-```
-
-- `correo` se cambia en Auth y en la tabla a la vez.
-- `usuario` acepta `null` o `""` para quitar el nombre de usuario; la cuenta
-  queda accesible solo por correo.
-- `contrasena` la fija el administrador sin que el usuario intervenga.
-- `activo: false` desactiva la fila **y bloquea el acceso** en Auth; `true` lo
-  restablece.
-- `debeCambiarContrasena: true` vuelve a exigir el cambio en el siguiente
-  acceso. Es lo que conviene marcar al fijarle una contraseña a alguien que la
-  perdió.
-
-### `DELETE /api/usuarios/:id`
-
-Borra la fila y la cuenta de Auth. Responde `204` sin cuerpo.
+Las lecturas devuelven las filas en snake_case y con sus relaciones anidadas
+(por ejemplo, una venta trae su cliente y su lote). El frontend las convierte a
+sus entidades.
 
 ### Errores
 
-Siempre con la misma forma:
+Todas las respuestas de error tienen la misma forma:
 
 ```json
-{
-  "error": {
-    "codigo": "VALIDACION",
-    "mensaje": "Revisa los datos del usuario.",
-    "campos": { "correo": "Este correo ya está registrado en el sistema." }
-  }
-}
+{ "error": { "codigo": "VALIDACION", "mensaje": "Revisa los datos.", "campos": { "correo": "..." } } }
 ```
 
-| Código | HTTP | Cuándo |
+| Código HTTP | `codigo` | Cuándo |
 |---|---|---|
-| `VALIDACION` | 400 | Datos mal formados. `campos` trae el error de cada input |
-| `AUTENTICACION` | 401 | Falta el token, expiró, o la cuenta no tiene fila en `usuarios` |
-| `PERMISO_DENEGADO` | 403 | El rol no incluye la acción, u origen no permitido por CORS |
-| `NO_ENCONTRADO` | 404 | El usuario o la ruta no existen |
-| `CONFLICTO` | 409 | Correo duplicado, o intento de eliminarse/desactivarse a uno mismo |
-| `INFRAESTRUCTURA` | 500/502 | Fallo de Supabase o error no previsto |
+| 400 | `VALIDACION` | Datos incompletos o con formato incorrecto |
+| 401 | `AUTENTICACION` | Sin token, token vencido o credenciales incorrectas |
+| 403 | `PERMISO_DENEGADO` | El rol no tiene el permiso, o el origen no está en CORS |
+| 404 | `NO_ENCONTRADO` | El registro no existe |
+| 409 | `CONFLICTO` | Choca con otro registro (duplicado, o tiene registros que dependen de él) |
+| 429 | `CONFLICTO` | Límite de inicios de sesión (trae la cabecera `Retry-After`) |
+| 502 | `INFRAESTRUCTURA` | La base de datos falló o no respondió |
 
 ---
 
-## Cómo se protege
+## Docker
 
-Cada petición a `/api/usuarios` pasa por dos filtros, en este orden:
+`Dockerfile` construye una imagen en dos etapas: compila con todas las
+dependencias y deja en la imagen final solo lo compilado y las dependencias de
+producción. Corre sin privilegios (`USER node`) y Docker comprueba su salud con
+`/api/salud`.
 
-1. **Autenticación** (`middleware/autenticacion.ts`) — valida el token contra
-   Supabase Auth y resuelve la fila de `usuarios` enlazada por correo. Rechaza
-   si no hay fila o si el usuario está inactivo.
-2. **Autorización** (`middleware/autorizacion.ts`) — consulta `permisos_rol`
-   para el rol del solicitante y comprueba la acción concreta sobre el módulo
-   «Usuarios y roles».
-
-La validación del token se delega en Supabase en vez de verificar la firma
-localmente: cuesta una llamada de red por petición, pero un usuario bloqueado o
-eliminado deja de pasar de inmediato aunque su token siga vigente.
-
-**RLS no protege nada aquí.** La `service_role` key la ignora, así que estos dos
-middleware son la única barrera. Cualquier ruta nueva que los omita se ejecutará
-con privilegios totales.
-
-La única ruta que los omite a propósito es `POST /api/acceso/iniciar-sesion`,
-que no puede exigir un token porque es donde se consigue. A cambio, no expone
-ninguna consulta libre: solo traduce un nombre de usuario a correo por dentro,
-responde con un mensaje único ante cualquier fallo y está limitada por IP.
-
-Además, nadie puede eliminarse ni desactivarse a sí mismo: evita que el único
-administrador se deje fuera del sistema por accidente.
-
----
-
-## Consistencia entre Auth y la tabla
-
-No hay transacción posible entre Supabase Auth y Postgres, así que cada
-operación se compensa si falla a medias:
-
-| Operación | Orden | Si falla el segundo paso |
-|---|---|---|
-| Crear | Auth → tabla | Se borra la cuenta de Auth recién creada |
-| Editar | Auth → tabla | Se restauran en Auth el correo y el estado anteriores |
-| Eliminar | tabla → Auth | Se reinserta la fila con su id original |
-
-El orden no es arbitrario. Al crear, una cuenta huérfana se borra fácil; una
-fila sin cuenta deja al usuario sin poder entrar, que es justo el problema que
-este backend viene a resolver. Al eliminar es al revés: la fila se puede
-restaurar entera, pero una cuenta de Auth borrada se lleva su contraseña con
-ella.
-
-La contraseña es la única excepción: si la edición falla tras haberla cambiado,
-no se restaura, porque Auth solo guarda su hash. El administrador puede volver a
-fijarla.
-
-Si una compensación falla también, queda registrado en el log del servidor con
-las instrucciones para arreglarlo a mano.
-
----
-
-## Enlace entre Auth y `usuarios`
-
-El esquema no tiene clave foránea entre las dos, pero hay dos vínculos:
-
-- **Por correo** — `auth.users.email` = `usuarios.correo`, sin distinguir
-  mayúsculas. Es el que usa el frontend para componer la sesión.
-- **Por id** — `usuarios.id` = `auth.users.id`. Es la convención con la que se
-  creó la base, y este backend la mantiene: al dar de alta inserta la fila con
-  el id de la cuenta recién creada.
-
-El backend usa el id como vía rápida para localizar la cuenta y cae al correo si
-no coincide, así que las filas creadas a mano antes de existir este servicio
-siguen funcionando.
-
-Para comprobar el enlace basta con cruzar `auth.users` y `usuarios` por correo:
-las filas que aparezcan en la primera y no en la segunda son cuentas de acceso
-sin usuario del sistema, y podrán entrar pero sin ningún permiso.
-
----
-
-## Esquema
-
-No queda ningún script pendiente: las migraciones están aplicadas y la base es
-ya la que el código espera. La forma de las tablas —y por qué es esa— está en
-[`docs/supabase.md`](../SIC-InvLaFe-frontend/docs/supabase.md) del frontend, que
-es de donde salen casi todas las consultas.
-
-Si alguna vez hay que levantar una base desde cero, ese documento es la
-referencia; el esquema en sí se saca de Supabase con **Database → Schema
-Visualizer** o con un `pg_dump --schema-only`.
-
----
-
-## Estructura
-
-```
-src/
-├─ index.ts                  arranque y cierre ordenado
-├─ app.ts                    construcción de la app (CORS, JSON, rutas)
-├─ config/entorno.ts         lectura y validación de las variables
-├─ compartido/
-│   ├─ errores.ts            jerarquía ErrorHttp → respuestas JSON uniformes
-│   └─ validacion.ts         validación de payloads y normalización de texto
-├─ infraestructura/supabase/
-│   ├─ admin.ts              cliente con la service_role key
-│   ├─ publico.ts            cliente con la publishable key (solo para el login)
-│   ├─ errores.ts            PostgREST y Auth → ErrorHttp
-│   └─ tablas.ts             nombres de tabla y forma cruda de las filas
-├─ middleware/
-│   ├─ autenticacion.ts      valida el token → req.solicitante
-│   ├─ autorizacion.ts       exigirPermiso(modulo, accion)
-│   ├─ limite-intentos.ts    tope de peticiones por IP para las rutas abiertas
-│   └─ errores.ts            manejador central y 404
-├─ modulos/
-│   ├─ acceso/               login por usuario o correo, módulos y permisos_rol
-│   └─ usuarios/             rutas · controlador · esquema · servicio
-└─ tipos/express.d.ts        req.solicitante
-```
-
-Para añadir un módulo nuevo: una carpeta bajo `modulos/` con el mismo reparto
-(rutas, controlador, esquema, servicio) y un `app.use()` en `app.ts`.
-
-### Un aviso sobre `modulos/acceso/modulos.ts`
-
-La tabla `modulos` guarda nombres libres, así que el cruce con las claves del
-código se hace por nombre normalizado, con una lista de alias. Esa lista y la
-función `normalizar` son **copia literal** de las del frontend
-(`packages/core/src/modules/acceso/`). Si se añade un alias en un lado hay que
-añadirlo en el otro: si divergen, el backend denegará acciones que la interfaz
-sí ofrece.
-
----
-
-## Despliegue
-
-```bash
-npm ci
-npm run build
-npm start
-```
-
-Antes de exponerlo:
-
-- `NODE_ENV=production` — deja de incluir detalles de error en las respuestas.
-- `CORS_ORIGENES` con el dominio real del frontend, sin barra final.
-- Servirlo por HTTPS: por la cabecera `Authorization` viajan tokens de sesión.
-- `SUPABASE_SERVICE_ROLE_KEY` como secreto del proveedor de hosting, nunca en el
-  repositorio ni en la imagen.
-
-`GET /api/salud` sirve como health check.
+No se levanta solo: lo hace el `compose.yaml` de la raíz del repositorio, junto
+con el frontend. Las instrucciones están en el README de la raíz.

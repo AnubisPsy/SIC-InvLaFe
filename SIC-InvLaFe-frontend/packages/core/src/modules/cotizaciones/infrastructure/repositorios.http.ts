@@ -9,7 +9,7 @@ import {
   type FilaCotizacion,
   type FilaCotizacionItem,
   type FilaProducto,
-} from "../../../infrastructure/supabase/tablas";
+} from "../../../infrastructure/http/filas";
 import { redondearCantidad } from "../../../shared/numeros";
 import type { ID } from "../../../shared/tipos";
 import type {

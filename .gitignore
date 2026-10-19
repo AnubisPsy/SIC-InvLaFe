@@ -1,0 +1,2 @@
+# Variables de entorno de docker compose: llevan contraseñas.
+.env

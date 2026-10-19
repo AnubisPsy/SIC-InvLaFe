@@ -28,14 +28,13 @@ function arrancar(): void {
   const servidor = app.listen(entorno.puerto, () => {
     console.log(
       `SIC-InvLaFe backend escuchando en http://localhost:${entorno.puerto}\n` +
-        `  Entorno:  ${entorno.esProduccion ? "production" : "development"}\n` +
-        `  Supabase: ${entorno.supabaseUrl}\n` +
-        `  CORS:     ${entorno.origenesPermitidos.join(", ")}`,
+        `  Entorno: ${entorno.esProduccion ? "production" : "development"}\n` +
+        `  CORS:    ${entorno.origenesPermitidos.join(", ") || "solo el mismo origen"}`,
     );
   });
 
   // Cierre ordenado: deja terminar las peticiones en curso antes de salir, para
-  // no cortar una operación a medias entre Auth y la tabla `usuarios`.
+  // no cortar una operación a medias.
   for (const senal of ["SIGINT", "SIGTERM"] as const) {
     process.on(senal, () => {
       console.log(`\n${senal} recibido, cerrando el servidor…`);

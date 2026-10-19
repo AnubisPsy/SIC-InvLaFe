@@ -9,7 +9,7 @@ import {
   type FilaPagoProveedor,
   type FilaProducto,
   type FilaProveedor,
-} from "../../../infrastructure/supabase/tablas";
+} from "../../../infrastructure/http/filas";
 import { redondearCantidad, sumarMontos } from "../../../shared/numeros";
 import type { ID } from "../../../shared/tipos";
 import type { Proveedor } from "../../catalogos/domain/entidades";
@@ -40,9 +40,8 @@ import type {
 /**
  * Compras, lotes y pagos a proveedores a través del backend.
  *
- * El backend devuelve las filas con la misma forma que entregaba Supabase
- * (snake_case y relaciones anidadas), así que las funciones de conversión de
- * abajo son las mismas de antes: los saldos y estados se siguen calculando
+ * El backend devuelve las filas en snake_case y con las relaciones anidadas,
+ * así que las funciones de conversión de abajo son las mismas de antes: los saldos y estados se siguen calculando
  * aquí, con las reglas del dominio.
  */
 

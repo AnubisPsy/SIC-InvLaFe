@@ -77,7 +77,7 @@ export class ErrorAutenticacion extends ErrorApp {
   }
 }
 
-/** Fallo de red, de Supabase o cualquier cosa fuera del control del dominio. */
+/** Fallo de red, del backend o cualquier cosa fuera del control del dominio. */
 export class ErrorInfraestructura extends ErrorApp {
   constructor(
     mensajeUsuario = "Ocurrió un error de conexión. Intenta de nuevo.",
