@@ -6,8 +6,8 @@ import { useCallback, useEffect, useState } from "react";
  *
  * Va en `localStorage` a propósito: si alguien trabaja en dos pestañas, la
  * actividad en una no debe dejar caducar la otra. Es el mismo almacén donde
- * supabase-js guarda la sesión, así que ambas cosas caducan a la vez si el
- * usuario limpia el navegador.
+ * se guarda la sesión, así que ambas cosas se borran a la vez si el usuario
+ * limpia el navegador.
  */
 const CLAVE_ACTIVIDAD = "invlafe:ultima-actividad";
 

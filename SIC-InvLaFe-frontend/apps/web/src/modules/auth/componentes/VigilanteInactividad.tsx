@@ -20,10 +20,8 @@ function formatearCuentaAtras(segundos: number): string {
  * Cierra la sesión tras una hora sin actividad, avisando antes.
  *
  * Se monta dentro del guardián de rutas privadas, así que vigila todas las
- * pantallas con sesión y ninguna sin ella. El cierre es de verdad —invalida el
- * token en Supabase— y no solo un borrado local: un token vivo en
- * `localStorage` seguiría sirviendo aunque la aplicación hubiera olvidado que
- * existe.
+ * pantallas con sesión y ninguna sin ella. Al cerrar se borra el token del
+ * navegador; el backend, además, lo rechaza por sí solo cuando caduca.
  */
 export function VigilanteInactividad() {
   const { data: sesion } = useSesion();

@@ -1,21 +1,16 @@
 import { crearClienteApi } from "../infrastructure/http/cliente";
-import {
-  crearClienteSupabase,
-  type ClienteSupabase,
-  type ConfiguracionSupabase,
-} from "../infrastructure/supabase/cliente";
+import { crearAlmacenSesion, type AlmacenamientoSesion } from "../infrastructure/http/sesion";
 
 import { crearCasosUsoAcceso, type CasosUsoAcceso } from "../modules/acceso/application/casos-uso";
-import { crearRepositorioUsuariosBackend } from "../modules/acceso/infrastructure/repositorios.backend";
 import {
   crearRepositorioModulos,
   crearRepositorioPermisos,
   crearRepositorioRoles,
   crearRepositorioUsuarios,
-} from "../modules/acceso/infrastructure/repositorios.supabase";
+} from "../modules/acceso/infrastructure/repositorios.http";
 
 import { crearCasosUsoAuth, type CasosUsoAuth } from "../modules/auth/application/casos-uso";
-import { crearServicioAutenticacion } from "../modules/auth/infrastructure/servicio.supabase";
+import { crearServicioAutenticacion } from "../modules/auth/infrastructure/servicio.backend";
 
 import {
   crearCasosUsoCatalogos,
@@ -25,7 +20,7 @@ import {
   crearRepositorioClientes,
   crearRepositorioProductos,
   crearRepositorioProveedores,
-} from "../modules/catalogos/infrastructure/repositorios.supabase";
+} from "../modules/catalogos/infrastructure/repositorios.http";
 
 import {
   crearCasosUsoCompras,
@@ -35,13 +30,13 @@ import {
   crearRepositorioCompras,
   crearRepositorioLotes,
   crearRepositorioPagosProveedor,
-} from "../modules/compras/infrastructure/repositorios.supabase";
+} from "../modules/compras/infrastructure/repositorios.http";
 
 import {
   crearCasosUsoCotizaciones,
   type CasosUsoCotizaciones,
 } from "../modules/cotizaciones/application/casos-uso";
-import { crearRepositorioCotizaciones } from "../modules/cotizaciones/infrastructure/repositorios.supabase";
+import { crearRepositorioCotizaciones } from "../modules/cotizaciones/infrastructure/repositorios.http";
 
 import {
   crearCasosUsoInventario,
@@ -55,29 +50,26 @@ import {
 import {
   crearRepositorioPagosCliente,
   crearRepositorioVentas,
-} from "../modules/ventas/infrastructure/repositorios.supabase";
+} from "../modules/ventas/infrastructure/repositorios.http";
 
 /**
- * Punto único donde el dominio se une con Supabase.
+ * Punto único donde el dominio se une con el backend.
  *
  * Es lo único que la app (web o React Native) necesita construir: todo lo demás
- * se consume a través de estos casos de uso, que no exponen nada de PostgREST.
- * Cambiar de backend significa escribir otro contenedor, no tocar los módulos.
+ * se consume a través de estos casos de uso. Cambiar de backend significa
+ * escribir otro contenedor, no tocar los módulos.
  */
-export interface ConfiguracionContenedor extends ConfiguracionSupabase {
-  /**
-   * URL del backend administrativo (`VITE_API_URL`), sin barra final.
-   *
-   * Es obligatoria: sin ella, dar de alta un usuario volvería a crear solo la
-   * fila de la tabla, sin cuenta de acceso, que es justo el problema que el
-   * backend resuelve. Mejor fallar al arrancar que en silencio.
-   */
+export interface ConfiguracionContenedor {
+  /** URL del backend (`VITE_API_URL`), sin barra final. */
   apiUrl: string;
+  /**
+   * Dónde guardar la sesión. En la web, `window.localStorage`; en React Native,
+   * un adaptador de AsyncStorage. Sin él, la sesión vive solo en memoria.
+   */
+  almacenamiento?: AlmacenamientoSesion;
 }
 
 export interface ContenedorCore {
-  /** Se expone solo para casos puntuales, como suscribirse a realtime. */
-  cliente: ClienteSupabase;
   auth: CasosUsoAuth;
   catalogos: CasosUsoCatalogos;
   compras: CasosUsoCompras;
@@ -88,31 +80,24 @@ export interface ContenedorCore {
 }
 
 export function crearContenedor(config: ConfiguracionContenedor): ContenedorCore {
-  const cliente = crearClienteSupabase(config);
-  const api = crearClienteApi({ urlBase: config.apiUrl }, cliente);
+  const sesion = crearAlmacenSesion(config.almacenamiento);
+  const api = crearClienteApi({ urlBase: config.apiUrl }, sesion);
 
   // --- Repositorios (adaptadores de salida) ---
-  const repoProveedores = crearRepositorioProveedores(cliente);
-  const repoClientes = crearRepositorioClientes(cliente);
-  const repoProductos = crearRepositorioProductos(cliente);
-  const repoCompras = crearRepositorioCompras(cliente);
-  const repoLotes = crearRepositorioLotes(cliente);
-  const repoPagosProveedor = crearRepositorioPagosProveedor(cliente);
-  const repoVentas = crearRepositorioVentas(cliente);
-  const repoPagosCliente = crearRepositorioPagosCliente(cliente);
-  const repoCotizaciones = crearRepositorioCotizaciones(cliente);
-  // Las escrituras de usuarios pasan por el backend porque necesitan la
-  // service_role key; las lecturas siguen yendo directas a Supabase.
-  const repoUsuarios = crearRepositorioUsuariosBackend(
-    crearRepositorioUsuarios(cliente),
-    api,
-  );
-  const repoRoles = crearRepositorioRoles(cliente);
-  const repoModulos = crearRepositorioModulos(cliente);
-  const repoPermisos = crearRepositorioPermisos(cliente);
-  // El backend entra aquí solo por el login con nombre de usuario; entrar con
-  // el correo sigue siendo una llamada directa a Supabase.
-  const servicioAuth = crearServicioAutenticacion(cliente, api);
+  const repoProveedores = crearRepositorioProveedores(api);
+  const repoClientes = crearRepositorioClientes(api);
+  const repoProductos = crearRepositorioProductos(api);
+  const repoCompras = crearRepositorioCompras(api);
+  const repoLotes = crearRepositorioLotes(api);
+  const repoPagosProveedor = crearRepositorioPagosProveedor(api);
+  const repoVentas = crearRepositorioVentas(api);
+  const repoPagosCliente = crearRepositorioPagosCliente(api);
+  const repoCotizaciones = crearRepositorioCotizaciones(api);
+  const repoUsuarios = crearRepositorioUsuarios(api);
+  const repoRoles = crearRepositorioRoles(api);
+  const repoModulos = crearRepositorioModulos(api);
+  const repoPermisos = crearRepositorioPermisos(api);
+  const servicioAuth = crearServicioAutenticacion(api, sesion);
 
   // --- Casos de uso. El orden importa: compras depende de catálogos,
   // inventario de compras, y cotizaciones de ventas.
@@ -157,7 +142,6 @@ export function crearContenedor(config: ConfiguracionContenedor): ContenedorCore
   });
 
   return {
-    cliente,
     auth,
     catalogos,
     compras,

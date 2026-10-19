@@ -16,10 +16,7 @@ import { limpiarActividad } from "../utiles/inactividad";
  * contraseña inicial la eligió otra persona, así que hasta que se sustituya hay
  * dos que la conocen.
  *
- * Es hermana de `RestablecerContrasena`, pero no la misma pantalla: aquella se
- * abre desde el enlace del correo y su duda es si el enlace sigue siendo
- * válido; esta se abre con una sesión normal y su trabajo es no dejar salir a
- * ningún sitio que no sea cerrar sesión.
+ * Su trabajo es no dejar salir a ningún sitio que no sea cerrar sesión.
  */
 export function CambiarContrasenaInicial() {
   const [contrasena, setContrasena] = useState("");

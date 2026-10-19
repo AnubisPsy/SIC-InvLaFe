@@ -9,7 +9,7 @@ interface Estado {
  * Límite de error de la aplicación.
  *
  * Existe sobre todo por el arranque: si faltan las variables de entorno, el
- * contenedor de Supabase lanza durante el primer render y sin esto el usuario
+ * contenedor lanza durante el primer render y sin esto el usuario
  * solo vería una página en blanco. Aquí al menos lee qué configurar.
  */
 export class LimiteError extends Component<{ children: ReactNode }, Estado> {
@@ -81,8 +81,7 @@ export class LimiteError extends Component<{ children: ReactNode }, Estado> {
               }}
             >
 {`# apps/web/.env
-VITE_SUPABASE_URL=https://tuproyecto.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...`}
+VITE_API_URL=http://localhost:3000`}
             </Box>
           )}
 

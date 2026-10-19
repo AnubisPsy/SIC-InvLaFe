@@ -1,9 +1,9 @@
 import { CONFIG_SESION, mensajeDeError, type ErrorValidacion } from "@invlafe/core";
 import { useIniciarSesion } from "@invlafe/query";
-import { Box, IconButton, Stack, Typography } from "@mui/material";
+import { Box, IconButton, Stack } from "@mui/material";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { LayoutAuth } from "../../../layout/LayoutAuth";
 import { Alerta, Boton, Campo, Entrada } from "../../../shared/ui";
 import { erroresDeCampo } from "../utiles/errores";
@@ -118,23 +118,6 @@ export function IniciarSesion() {
             </Box>
           )}
         </Campo>
-
-        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-          <Typography
-            component={Link}
-            to="/recuperar-contrasena"
-            sx={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: "primary.500",
-              textDecoration: "none",
-              transition: "color 0.2s",
-              "&:hover": { color: "primary.600" },
-            }}
-          >
-            ¿Olvidaste tu contraseña?
-          </Typography>
-        </Box>
 
         <Boton
           type="submit"

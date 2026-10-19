@@ -7,16 +7,8 @@
  * render— nunca llegaría a mostrar qué falta configurar.
  */
 export interface Entorno {
-  supabaseUrl: string;
-  supabasePublishableKey: string;
-  /**
-   * Backend administrativo. Solo lo usan las altas y bajas de usuarios, que
-   * necesitan la service_role key de Supabase y no pueden hacerse desde el
-   * navegador. El resto de la aplicación habla directamente con Supabase.
-   */
+  /** Dirección del backend, sin barra final. Toda la aplicación habla con él. */
   apiUrl: string;
-  /** A dónde vuelve el usuario desde el enlace del correo de recuperación. */
-  urlRestablecerContrasena: string;
 }
 
 function leer(nombre: string, valor: string | undefined): string {
@@ -24,8 +16,7 @@ function leer(nombre: string, valor: string | undefined): string {
   if (!limpio) {
     throw new Error(
       `Falta la variable de entorno ${nombre}.\n\n` +
-        "Copia apps/web/.env.example a apps/web/.env y completa los valores " +
-        "del proyecto de Supabase.",
+        "Copia apps/web/.env.example a apps/web/.env y escribe la dirección del backend.",
     );
   }
   return limpio;
@@ -37,14 +28,8 @@ export function leerEntorno(): Entorno {
   if (memoizado) return memoizado;
 
   memoizado = {
-    supabaseUrl: leer("VITE_SUPABASE_URL", import.meta.env.VITE_SUPABASE_URL),
-    supabasePublishableKey: leer(
-      "VITE_SUPABASE_PUBLISHABLE_KEY",
-      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    ),
     // Sin barra final: el cliente compone las rutas como `${apiUrl}/api/...`.
     apiUrl: leer("VITE_API_URL", import.meta.env.VITE_API_URL).replace(/\/+$/, ""),
-    urlRestablecerContrasena: `${globalThis.location.origin}/restablecer-contrasena`,
   };
 
   return memoizado;

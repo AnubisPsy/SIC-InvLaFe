@@ -8,18 +8,14 @@ import {
   ErrorValidacion,
   type CodigoError,
 } from "../../shared/errores";
-import type { ClienteSupabase } from "../supabase/cliente";
+import type { AlmacenSesion } from "./sesion";
 
 /**
- * Cliente HTTP del backend administrativo.
+ * Cliente HTTP del backend.
  *
- * Solo lo usan las escrituras sobre usuarios, que necesitan la `service_role`
- * key de Supabase y por eso no pueden hacerse desde el navegador. El resto de
- * la aplicación sigue hablando directamente con Supabase.
- *
- * Su trabajo es que el backend se vea desde el dominio exactamente igual que
- * PostgREST: devuelve datos o lanza un `ErrorApp`. Ningún caso de uso ni
- * componente sabe que hay un servidor de por medio.
+ * Toda la aplicación habla con el backend a través de él. Devuelve datos o
+ * lanza un `ErrorApp`, así que ningún caso de uso ni componente necesita
+ * saber que hay un servidor de por medio.
  */
 export interface ConfiguracionApi {
   /** URL base del backend, sin barra final. */
@@ -31,7 +27,7 @@ export interface ClienteApi {
 }
 
 export interface OpcionesSolicitud {
-  metodo?: "GET" | "POST" | "PATCH" | "DELETE";
+  metodo?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   cuerpo?: unknown;
   /** Descripción de la acción, para los mensajes de error. */
   contexto: string;
@@ -96,7 +92,7 @@ function esCodigoConocido(valor: unknown): valor is CodigoError {
  * Reconstruye el error del dominio a partir de la respuesta del backend.
  *
  * El backend usa los mismos códigos que `shared/errores.ts`, así que la
- * traducción es directa y la UI reacciona igual venga el fallo de Supabase o
+ * traducción es directa y la UI reacciona igual ante cualquier fallo
  * del servidor: `ErrorValidacion` pinta los errores por campo,
  * `ErrorPermisoDenegado` explica que falta permiso, etc.
  */
@@ -142,26 +138,22 @@ function aErrorApp(estado: number, cuerpo: CuerpoError, contexto: string): Error
 /**
  * Construye el cliente.
  *
- * El token se lee de la sesión de Supabase en cada llamada, no se captura al
- * crear el cliente: supabase-js lo refresca por su cuenta y un token guardado
- * quedaría obsoleto en cuestión de una hora.
+ * El token se lee de la sesión guardada en cada llamada. Si el backend
+ * responde 401 (token vencido o usuario desactivado), se borra la sesión: eso
+ * avisa a la aplicación, que manda al usuario al login.
  */
 export function crearClienteApi(
   config: ConfiguracionApi,
-  supabase: ClienteSupabase,
+  sesion: AlmacenSesion,
 ): ClienteApi {
   const urlBase = config.urlBase.replace(/\/+$/, "");
 
   async function tokenDeSesion(): Promise<string> {
-    const { data, error } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-
-    if (error || !token) {
-      throw new ErrorAutenticacion(
-        "No hay una sesión activa. Vuelve a iniciar sesión.",
-      );
+    const guardada = await sesion.leer();
+    if (!guardada) {
+      throw new ErrorAutenticacion("No hay una sesión activa. Vuelve a iniciar sesión.");
     }
-    return token;
+    return guardada.token;
   }
 
   return {
@@ -182,8 +174,7 @@ export function crearClienteApi(
         });
       } catch (fallo) {
         // `fetch` solo rechaza si la petición no llegó a hacerse: servidor
-        // apagado, DNS, CORS o red caída. Es el caso que más desconcierta al
-        // usuario, así que el mensaje dice qué hacer en vez de "Failed to fetch".
+        // apagado, DNS, CORS o red caída.
         throw new ErrorInfraestructura(
           `No se pudo conectar con el servidor para ${contexto}. ` +
             "Comprueba que el backend esté encendido e inténtalo de nuevo.",
@@ -198,12 +189,12 @@ export function crearClienteApi(
       try {
         datos = await respuesta.json();
       } catch {
-        // Respuesta sin JSON: si venía bien, no había nada que leer; si venía
-        // mal, el estado HTTP basta para construir el error.
         if (respuesta.ok) return undefined as T;
       }
 
       if (!respuesta.ok) {
+        // Un 401 con token significa que la sesión ya no vale.
+        if (respuesta.status === 401 && token !== null) await sesion.borrar();
         throw aErrorApp(respuesta.status, (datos ?? {}) as CuerpoError, contexto);
       }
 

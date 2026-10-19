@@ -66,16 +66,6 @@ const IniciarSesion = lazy(() =>
     default: m.IniciarSesion,
   })),
 );
-const RecuperarContrasena = lazy(() =>
-  import("../modules/auth/paginas/RecuperarContrasena").then((m) => ({
-    default: m.RecuperarContrasena,
-  })),
-);
-const RestablecerContrasena = lazy(() =>
-  import("../modules/auth/paginas/RestablecerContrasena").then((m) => ({
-    default: m.RestablecerContrasena,
-  })),
-);
 const CambiarContrasenaInicial = lazy(() =>
   import("../modules/auth/paginas/CambiarContrasenaInicial").then((m) => ({
     default: m.CambiarContrasenaInicial,
@@ -89,17 +79,10 @@ export function Rutas() {
       {/* Sin sesión */}
       <Route element={<RutaPublica />}>
         <Route path="/iniciar-sesion" element={<IniciarSesion />} />
-        <Route path="/recuperar-contrasena" element={<RecuperarContrasena />} />
       </Route>
 
       {/*
-        Restablecer no va bajo RutaPublica: el enlace del correo crea una sesión
-        temporal, así que el usuario llega aquí ya autenticado.
-      */}
-      <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
-
-      {/*
-        Tampoco va bajo RutaPrivada, y por el motivo contrario: es ese guardián
+        No va bajo RutaPrivada: es ese guardián
         el que redirige aquí, así que meterla dentro daría un bucle infinito.
         La pantalla comprueba la sesión por su cuenta.
       */}

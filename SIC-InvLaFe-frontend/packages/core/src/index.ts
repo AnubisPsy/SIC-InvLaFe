@@ -19,12 +19,7 @@ export {
   type ConfiguracionContenedor,
   type ContenedorCore,
 } from "./composition/contenedor";
-export {
-  crearClienteSupabase,
-  type AlmacenamientoSesion,
-  type ClienteSupabase,
-  type ConfiguracionSupabase,
-} from "./infrastructure/supabase/cliente";
+export type { AlmacenamientoSesion } from "./infrastructure/http/sesion";
 export type { ClienteApi, ConfiguracionApi } from "./infrastructure/http/cliente";
 
 // --- Autenticación -----------------------------------------------------------

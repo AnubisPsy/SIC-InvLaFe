@@ -18,11 +18,8 @@ function obtenerContenedor(): ContenedorCore {
   if (!contenedor) {
     const entorno = leerEntorno();
     contenedor = crearContenedor({
-      url: entorno.supabaseUrl,
-      publishableKey: entorno.supabasePublishableKey,
       apiUrl: entorno.apiUrl,
-      // En web sí hay que leer el token del enlace de recuperación desde la URL.
-      detectarSesionEnUrl: true,
+      almacenamiento: globalThis.localStorage,
     });
   }
   return contenedor;
