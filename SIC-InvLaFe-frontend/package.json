@@ -1,0 +1,20 @@
+{
+  "name": "sic-invlafe",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @invlafe/web",
+    "build": "npm run build --workspace @invlafe/web",
+    "preview": "npm run preview --workspace @invlafe/web",
+    "typecheck": "tsc -b",
+    "lint": "npm run lint --workspace @invlafe/web"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2"
+  }
+}

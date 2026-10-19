@@ -1,0 +1,29 @@
+{
+  "name": "@invlafe/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "API administrativa de SIC-InvLaFe. Solo cubre lo que exige la service_role key de Supabase (altas y bajas de cuentas de acceso); el resto del CRUD lo hace el frontend directo contra Supabase con RLS.",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -b",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.58.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.13.3",
+    "tsx": "^4.23.11",
+    "typescript": "~6.0.2"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@invlafe/query",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hooks de acceso a datos (TanStack Query) sobre @invlafe/core. Compartidos entre la web y React Native: no renderizan nada, solo exponen estado.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@invlafe/core": "*"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "react": ">=18"
+  }
+}
