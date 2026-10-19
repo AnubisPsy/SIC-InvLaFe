@@ -3,6 +3,7 @@ import {
   ErrorConflicto,
   ErrorHttp,
   ErrorInfraestructura,
+  ErrorValidacion,
 } from "../../compartido/errores.js";
 import { leerEntorno } from "../../config/entorno.js";
 
@@ -113,6 +114,8 @@ export function traducirErrorPg(error: unknown, contexto: string): ErrorHttp {
         "Los datos no cumplen una validación de la base de datos.",
         error,
       );
+    case "22P02": // invalid_text_representation (p. ej. un id que no es UUID)
+      return new ErrorValidacion("Algún dato enviado no tiene un formato válido.");
     case "42703": // undefined_column
     case "42P01": // undefined_table
       return new ErrorInfraestructura(

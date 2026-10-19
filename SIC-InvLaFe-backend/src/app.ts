@@ -5,8 +5,12 @@ import { leerEntorno } from "./config/entorno.js";
 import { baseDisponible } from "./infraestructura/db/pool.js";
 import { manejarErrores, rutaNoEncontrada } from "./middleware/errores.js";
 import { rutasAcceso } from "./modulos/acceso/rutas.js";
+import { rutasClientes, rutasProductos, rutasProveedores } from "./modulos/catalogos/rutas.js";
+import { rutasCompras, rutasLotes, rutasPagosProveedor } from "./modulos/compras/rutas.js";
+import { rutasCotizaciones } from "./modulos/cotizaciones/rutas.js";
 import { rutasModulos, rutasRoles } from "./modulos/roles/rutas.js";
 import { rutasUsuarios } from "./modulos/usuarios/rutas.js";
+import { rutasPagosCliente, rutasVentas } from "./modulos/ventas/rutas.js";
 
 /**
  * Construcción de la aplicación, separada del arranque del servidor para poder
@@ -71,6 +75,15 @@ export function crearApp(): Express {
   app.use("/api/usuarios", rutasUsuarios);
   app.use("/api/roles", rutasRoles);
   app.use("/api/modulos", rutasModulos);
+  app.use("/api/clientes", rutasClientes);
+  app.use("/api/proveedores", rutasProveedores);
+  app.use("/api/productos", rutasProductos);
+  app.use("/api/compras", rutasCompras);
+  app.use("/api/lotes", rutasLotes);
+  app.use("/api/pagos-proveedor", rutasPagosProveedor);
+  app.use("/api/ventas", rutasVentas);
+  app.use("/api/pagos-cliente", rutasPagosCliente);
+  app.use("/api/cotizaciones", rutasCotizaciones);
 
   app.use(rutaNoEncontrada);
   app.use(manejarErrores);
