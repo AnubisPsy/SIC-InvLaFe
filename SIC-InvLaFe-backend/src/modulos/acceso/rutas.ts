@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { exigirAutenticacion } from "../../middleware/autenticacion.js";
 import { limitarIntentos } from "../../middleware/limite-intentos.js";
-import { postCambiarContrasena, postIniciarSesion } from "./controlador.js";
+import { getSesion, postCambiarContrasena, postIniciarSesion } from "./controlador.js";
 
 /**
  * Rutas de acceso: las que hacen falta para entrar y para poder empezar a
@@ -26,3 +26,5 @@ rutasAcceso.post(
 );
 
 rutasAcceso.post("/cambiar-contrasena", exigirAutenticacion, postCambiarContrasena);
+
+rutasAcceso.get("/sesion", exigirAutenticacion, getSesion);

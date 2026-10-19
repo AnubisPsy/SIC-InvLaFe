@@ -23,6 +23,12 @@ export interface Entorno {
   esProduccion: boolean;
   /** Orígenes que CORS acepta. Nunca está vacío: si lo estuviera, no arranca. */
   origenesPermitidos: string[];
+  /** Cadena de conexión a PostgreSQL: postgres://usuario:clave@host:puerto/base */
+  baseDatosUrl: string;
+  /** Clave con la que se firman y verifican los tokens de sesión (JWT). */
+  jwtSecreto: string;
+  /** Cuánto dura una sesión antes de pedir login otra vez, p. ej. "8h". */
+  jwtDuracion: string;
 }
 
 function obligatoria(nombre: string): string {
@@ -122,6 +128,14 @@ export function leerEntorno(): Entorno {
     );
   }
 
+  const jwtSecreto = obligatoria("JWT_SECRETO");
+  if (jwtSecreto.length < 32) {
+    throw new Error(
+      "JWT_SECRETO es demasiado corto: usa al menos 32 caracteres aleatorios.\n" +
+        "Puedes generar uno con: node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\"",
+    );
+  }
+
   memoizado = {
     supabaseUrl: url.replace(/\/+$/, ""),
     supabaseServiceRoleKey: clave,
@@ -129,6 +143,9 @@ export function leerEntorno(): Entorno {
     puerto: puerto(process.env.PORT),
     esProduccion: process.env.NODE_ENV === "production",
     origenesPermitidos: listaDeOrigenes(process.env.CORS_ORIGENES),
+    baseDatosUrl: obligatoria("DATABASE_URL"),
+    jwtSecreto,
+    jwtDuracion: process.env.JWT_DURACION?.trim() || "8h",
   };
 
   return memoizado;

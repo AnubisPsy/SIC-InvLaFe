@@ -2,8 +2,10 @@ import cors from "cors";
 import express, { type Express } from "express";
 import { ErrorPermisoDenegado } from "./compartido/errores.js";
 import { leerEntorno } from "./config/entorno.js";
+import { baseDisponible } from "./infraestructura/db/pool.js";
 import { manejarErrores, rutaNoEncontrada } from "./middleware/errores.js";
 import { rutasAcceso } from "./modulos/acceso/rutas.js";
+import { rutasModulos, rutasRoles } from "./modulos/roles/rutas.js";
 import { rutasUsuarios } from "./modulos/usuarios/rutas.js";
 
 /**
@@ -42,7 +44,7 @@ export function crearApp(): Express {
           ),
         );
       },
-      methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
       maxAge: 86400,
     }),
@@ -57,13 +59,18 @@ export function crearApp(): Express {
    * «el backend está caído» de «el backend rechazó la operación», y es lo que
    * consultan los servicios de hosting para saber si el proceso vive.
    */
-  app.get("/api/salud", (_req, res) => {
-    res.json({ estado: "ok", servicio: "sic-invlafe-backend" });
+  app.get("/api/salud", async (_req, res) => {
+    const baseDatos = (await baseDisponible()) ? "ok" : "sin conexion";
+    res
+      .status(baseDatos === "ok" ? 200 : 503)
+      .json({ estado: "ok", servicio: "sic-invlafe-backend", baseDatos });
   });
 
   // Sin autenticación: es donde se obtiene la sesión. Ver `rutasAcceso`.
   app.use("/api/acceso", rutasAcceso);
   app.use("/api/usuarios", rutasUsuarios);
+  app.use("/api/roles", rutasRoles);
+  app.use("/api/modulos", rutasModulos);
 
   app.use(rutaNoEncontrada);
   app.use(manejarErrores);

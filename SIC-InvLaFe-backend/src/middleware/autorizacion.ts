@@ -42,3 +42,33 @@ export function exigirPermiso(modulo: ClaveModulo, accion: Accion): RequestHandl
     next();
   };
 }
+
+/**
+ * Como `exigirPermiso`, pero deja pasar también cuando la petición es sobre
+ * algo propio: tu usuario, tu rol, los permisos de tu rol.
+ *
+ * Hace falta porque cualquier persona, tenga o no acceso a «Usuarios y roles»,
+ * necesita leer sus propios datos para que la aplicación sepa qué mostrarle.
+ */
+export function exigirPermisoOPropio(
+  modulo: ClaveModulo,
+  accion: Accion,
+  esPropio: (req: Request) => boolean,
+): RequestHandler {
+  const verificarPermiso = exigirPermiso(modulo, accion);
+
+  return async function verificarPermisoOPropio(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    if (!req.solicitante) {
+      throw new ErrorAutenticacion("No se pudo verificar tu sesión.");
+    }
+    if (esPropio(req)) {
+      next();
+      return;
+    }
+    await verificarPermiso(req, res, next);
+  };
+}

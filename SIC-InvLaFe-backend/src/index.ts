@@ -1,5 +1,6 @@
 import { crearApp } from "./app.js";
 import { leerEntorno } from "./config/entorno.js";
+import { cerrarPool } from "./infraestructura/db/pool.js";
 
 /**
  * Arranque del servidor.
@@ -38,7 +39,9 @@ function arrancar(): void {
   for (const senal of ["SIGINT", "SIGTERM"] as const) {
     process.on(senal, () => {
       console.log(`\n${senal} recibido, cerrando el servidor…`);
-      servidor.close(() => process.exit(0));
+      servidor.close(() => {
+        void cerrarPool().finally(() => process.exit(0));
+      });
     });
   }
 }

@@ -2,7 +2,15 @@ import type { Request, Response } from "express";
 import { ErrorAutenticacion, ErrorValidacion } from "../../compartido/errores.js";
 import type { UsuarioSistema } from "../acceso/servicio.js";
 import { validarCrearUsuario, validarEditarUsuario } from "./esquema.js";
-import { crearUsuario, editarUsuario, eliminarUsuario } from "./servicio.js";
+import {
+  crearUsuario,
+  editarUsuario,
+  eliminarUsuario,
+  listarUsuarios,
+  obtenerUsuarioDetalle,
+  obtenerUsuarioDetallePorCorreo,
+  type UsuarioDetalle,
+} from "./servicio.js";
 
 /**
  * Forma del usuario que devuelve la API.
@@ -56,6 +64,31 @@ function idDeRuta(req: Request): string {
   const id = (Array.isArray(crudo) ? crudo[0] : crudo)?.trim();
   if (!id) throw new ErrorValidacion("Falta el id del usuario en la ruta.");
   return id;
+}
+
+function aRespuestaDetalle(usuario: UsuarioDetalle) {
+  return { ...aRespuesta(usuario), rol: usuario.rol };
+}
+
+/** `GET /api/usuarios` — todos los usuarios con su rol. */
+export async function getUsuarios(_req: Request, res: Response): Promise<void> {
+  const usuarios = await listarUsuarios();
+  res.status(200).json({ usuarios: usuarios.map(aRespuestaDetalle) });
+}
+
+/** `GET /api/usuarios/:id` — un usuario con su rol, o `null` si no existe. */
+export async function getUsuario(req: Request, res: Response): Promise<void> {
+  const usuario = await obtenerUsuarioDetalle(idDeRuta(req));
+  res.status(200).json({ usuario: usuario ? aRespuestaDetalle(usuario) : null });
+}
+
+/** `GET /api/usuarios/por-correo?correo=...` — lo usa la sesión para cargar tu usuario. */
+export async function getUsuarioPorCorreo(req: Request, res: Response): Promise<void> {
+  const correo = typeof req.query.correo === "string" ? req.query.correo.trim() : "";
+  if (!correo) throw new ErrorValidacion("Falta el parámetro «correo».");
+
+  const usuario = await obtenerUsuarioDetallePorCorreo(correo);
+  res.status(200).json({ usuario: usuario ? aRespuestaDetalle(usuario) : null });
 }
 
 export async function postUsuario(req: Request, res: Response): Promise<void> {

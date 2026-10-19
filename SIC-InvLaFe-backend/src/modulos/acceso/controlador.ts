@@ -35,3 +35,18 @@ export async function postCambiarContrasena(
   await cambiarContrasenaPropia(solicitante, validarNuevaContrasena(req.body));
   res.status(204).end();
 }
+
+/**
+ * `GET /api/acceso/sesion`
+ *
+ * Confirma que el token sigue siendo válido y devuelve a quién pertenece. El
+ * frontend lo usa al recargar la página para recuperar la sesión.
+ */
+export function getSesion(req: Request, res: Response): void {
+  const solicitante = req.solicitante;
+  if (!solicitante) throw new ErrorAutenticacion("No se pudo verificar tu sesión.");
+
+  res.status(200).json({
+    sesion: { authUserId: solicitante.usuario.id, correo: solicitante.correo },
+  });
+}

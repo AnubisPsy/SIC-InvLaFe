@@ -1,7 +1,5 @@
-import { obtenerClienteAdmin } from "../../infraestructura/supabase/admin.js";
-import { ejecutar, ejecutarOpcional } from "../../infraestructura/supabase/errores.js";
+import { consultar, consultarUno } from "../../infraestructura/db/pool.js";
 import {
-  TABLAS,
   aBooleano,
   aId,
   aIdOpcional,
@@ -19,21 +17,15 @@ import {
 
 /** Identidad ya verificada de quien hace la petición. */
 export interface Solicitante {
-  /** Id de la cuenta en `auth.users`. */
+  /** Id del usuario. Se mantiene el nombre de la época de Supabase Auth. */
   authUserId: string;
-  /** Correo de la cuenta de Auth, ya en minúsculas. */
+  /** Correo del usuario, en minúsculas. */
   correo: string;
-  /** Fila de `usuarios` enlazada por correo. */
+  /** Fila de `usuarios` de quien hace la petición. */
   usuario: UsuarioSistema;
 }
 
-/**
- * Fila de `usuarios` en la forma que usa el resto del backend.
- *
- * `id` coincide con el de la cuenta de Auth en las filas creadas por este
- * backend (ver `FilaUsuario`), lo que permite localizar la cuenta sin recorrer
- * el listado completo de Auth.
- */
+/** Fila de `usuarios` en la forma que usa el resto del backend. */
 export interface UsuarioSistema {
   id: string;
   nombre: string;
@@ -56,34 +48,29 @@ export function aUsuarioSistema(fila: FilaUsuario): UsuarioSistema {
     usuario: fila.usuario ?? null,
     telefono: fila.telefono,
     rolId: aIdOpcional(fila.rol_id),
-    // Sin valor explícito se asume activo: es como se comportan las filas
-    // creadas antes de que la columna existiera. Igual que en el frontend.
+    // Sin valor explícito se asume activo. Igual que en el frontend.
     activo: aBooleano(fila.activo, true),
-    // Aquí el valor por defecto es el contrario y por el mismo motivo: sin
-    // columna, nadie tenía cambio pendiente, y asumir `true` dejaría a todo el
-    // mundo atrapado en la pantalla de cambio tras desplegar sin migrar.
+    // Sin valor explícito, nadie tiene un cambio de contraseña pendiente.
     debeCambiarContrasena: aBooleano(fila.debe_cambiar_contrasena, false),
     creadoEn: fila.creado_en,
   };
 }
 
 /**
- * Busca la fila de `usuarios` que corresponde a una cuenta de Auth.
- *
- * El enlace es el correo (ver `docs/supabase.md` del frontend). Se compara sin
- * distinguir mayúsculas porque Auth normaliza el email y una fila pudo darse de
- * alta a mano con otra capitalización.
+ * Columnas de `usuarios` que se leen normalmente. `contrasena_hash` queda fuera
+ * a propósito: solo la consulta el login, para que nunca viaje por error en
+ * una respuesta.
  */
+export const COLUMNAS_USUARIO =
+  "id, nombre, correo, usuario, telefono, rol_id, activo, debe_cambiar_contrasena, creado_en";
+
+/** Busca la fila de `usuarios` por correo, sin distinguir mayúsculas. */
 export async function buscarUsuarioPorCorreo(
   correo: string,
 ): Promise<UsuarioSistema | null> {
-  const fila = await ejecutarOpcional<FilaUsuario>(
-    obtenerClienteAdmin()
-      .from(TABLAS.USUARIOS)
-      .select("*")
-      .ilike("correo", correo.trim())
-      .limit(1)
-      .maybeSingle(),
+  const fila = await consultarUno<FilaUsuario>(
+    `select ${COLUMNAS_USUARIO} from usuarios where lower(correo) = lower($1) limit 1`,
+    [correo.trim()],
     "identificar tu usuario",
   );
   return fila ? aUsuarioSistema(fila) : null;
@@ -92,15 +79,8 @@ export async function buscarUsuarioPorCorreo(
 /**
  * Busca la fila de `usuarios` por su nombre de usuario.
  *
- * Es el primer paso del login por nombre de usuario: Supabase Auth solo acepta
- * correo o teléfono como identificador, así que el nombre hay que traducirlo
- * antes.
- *
- * La comparación es de igualdad exacta contra el valor en minúsculas, **no**
- * `ilike`, y eso es deliberado: el patrón de nombre de usuario admite `_`, que
- * en `LIKE` es un comodín de un carácter, así que buscar `j_perez` con `ilike`
- * casaría también con `jxperez`. Se puede usar `eq` porque el nombre se guarda
- * ya normalizado a minúsculas (ver `normalizarNombreUsuario` en `esquema.ts`).
+ * Se compara contra el valor en minúsculas porque el nombre se guarda ya
+ * normalizado (ver `normalizarNombreUsuario` en `esquema.ts`).
  */
 export async function buscarUsuarioPorNombreUsuario(
   usuario: string,
@@ -108,36 +88,38 @@ export async function buscarUsuarioPorNombreUsuario(
   const limpio = usuario.trim().toLowerCase();
   if (!limpio) return null;
 
-  const fila = await ejecutarOpcional<FilaUsuario>(
-    obtenerClienteAdmin()
-      .from(TABLAS.USUARIOS)
-      .select("*")
-      .eq("usuario", limpio)
-      .limit(1)
-      .maybeSingle(),
+  const fila = await consultarUno<FilaUsuario>(
+    `select ${COLUMNAS_USUARIO} from usuarios where lower(usuario) = $1 limit 1`,
+    [limpio],
     "identificar tu usuario",
   );
   return fila ? aUsuarioSistema(fila) : null;
 }
 
 export async function buscarUsuarioPorId(id: string): Promise<UsuarioSistema | null> {
-  const fila = await ejecutarOpcional<FilaUsuario>(
-    obtenerClienteAdmin().from(TABLAS.USUARIOS).select("*").eq("id", id).maybeSingle(),
+  const fila = await consultarUno<FilaUsuario>(
+    `select ${COLUMNAS_USUARIO} from usuarios where id = $1`,
+    [id],
     "cargar el usuario",
   );
   return fila ? aUsuarioSistema(fila) : null;
 }
 
+/** Contraseña cifrada del usuario, o `null` si aún no tiene una. Solo para el login. */
+export async function obtenerHashContrasena(id: string): Promise<string | null> {
+  const fila = await consultarUno<{ contrasena_hash: string | null }>(
+    "select contrasena_hash from usuarios where id = $1",
+    [id],
+    "verificar tu contraseña",
+  );
+  return fila?.contrasena_hash ?? null;
+}
+
 /**
  * Acciones que un rol puede ejecutar sobre un módulo.
  *
- * Reproduce la semántica de `construirMapaPermisos` + `puede` del frontend:
- *
- * - Un rol puede tener varias filas para el mismo módulo (si la tabla `modulos`
- *   tiene entradas con nombres distintos que casan con la misma clave); se
- *   acumulan con OR para que gane el permiso más amplio.
- * - Crear, editar y eliminar exigen además poder ver: conceder "eliminar" sobre
- *   un módulo invisible no tiene sentido y en la interfaz nunca ocurre.
+ * - Si un rol tiene varias filas para el mismo módulo, gana el permiso más amplio.
+ * - Crear, editar y eliminar exigen además poder ver.
  * - Lo que no está concedido explícitamente, está denegado.
  */
 export async function accionesPermitidas(
@@ -146,10 +128,9 @@ export async function accionesPermitidas(
 ): Promise<AccionesPermitidas> {
   if (!rolId) return { ...SIN_PERMISOS };
 
-  const cliente = obtenerClienteAdmin();
-
-  const modulos = await ejecutar<FilaModulo[]>(
-    cliente.from(TABLAS.MODULOS).select("*"),
+  const modulos = await consultar<FilaModulo>(
+    "select id, nombre from modulos",
+    [],
     "cargar los módulos",
   );
 
@@ -157,16 +138,12 @@ export async function accionesPermitidas(
     .filter((fila) => claveDeModulo(fila.nombre) === modulo)
     .map((fila) => aId(fila.id));
 
-  // Sin fila en `modulos` no hay permiso que conceder. Es un fallo de
-  // configuración, no del usuario, y el frontend ya lo señala en pantalla.
+  // Sin fila en `modulos` no hay permiso que conceder.
   if (idsDelModulo.length === 0) return { ...SIN_PERMISOS };
 
-  const permisos = await ejecutar<FilaPermisoRol[]>(
-    cliente
-      .from(TABLAS.PERMISOS_ROL)
-      .select("*")
-      .eq("rol_id", rolId)
-      .in("modulo_id", idsDelModulo),
+  const permisos = await consultar<FilaPermisoRol>(
+    "select * from permisos_rol where rol_id = $1 and modulo_id = any($2::uuid[])",
+    [rolId, idsDelModulo],
     "cargar los permisos del rol",
   );
 
